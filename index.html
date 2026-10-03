@@ -218,7 +218,7 @@ window.startGoogleLogin=async function(){
   return signInWithGoogle();
 };
 async function signInWithGoogle(){
-  const redirectTo='https://arkanws513-spec.github.io/winter-shelter/card-game/';
+  const redirectTo='https://arkanws513-spec.github.io/Asater-Btaqat/';
   const {data,error}=await supabaseClient.auth.signInWithOAuth({
     provider:'google',
     options:{redirectTo,queryParams:{access_type:'offline',prompt:'consent'}}
