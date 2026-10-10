@@ -1,0 +1,9 @@
+# Allow only files required to serve the public game.
+# This protects even if a Dockerfile uses "COPY . /usr/share/nginx/html".
+*
+!index.html
+!modes.css
+!modes.js
+!duel.css
+!duel.js
+!nginx.conf
