@@ -137,7 +137,68 @@ function nextTowerFloor(){
 }
 function enterTower(){ensure();renderTower();showScreen('towerScreen')}
 function enterPvp(){showScreen('pvpScreen');renderPvp()}
-function renderPvp(){document.getElementById('pvpContent').innerHTML='<div class="pvpBox"><h2>🌐 قتال ضد لاعب</h2><p>هذا النظام مخصص لمواجهة لاعب حقيقي عبر الحسابات. البحث عن خصم يتم من خلال قائمة انتظار مشتركة، ثم تنتقل المعركة إلى نفس نظام المبارزة الحالي.</p><div class="pvpStatus" id="pvpStatus">جاهز للبحث عن لاعب.</div><button class="pvpBtn" onclick="startPvpQueue()">🔎 البحث عن خصم</button><button class="pvpBtn secondary" onclick="openPanel(\'معلومات القتال ضد لاعب\',\'<div class=quest><b>كيف يعمل؟</b><span>يتم مطابقة اللاعبين المسجلين بحساباتهم، ولا تدخل بطاقات امتياز البرج في قائمة البطاقات العشوائية للخصم.</span></div>\')">ℹ️ التفاصيل</button></div>'}
+const BOT_FIRST_NAMES=["رعد","ليث","سيف","آسر","يزن","فارس","قيس","شاهين","نادر","مالك","جاسر","برق","آدم","كاسر","سادن","هاشم","نور","عاصف","تميم","زيد"];
+const BOT_EPITHETS=["الأسطوري","حارس الظلال","قاهر التنانين","سيد البرق","فارس الفجر","عين الصقر","ملك الرماد","سيف القمر","حامي العرش","صائد النجوم"];
+const BOT_STYLES=[
+ {id:"aggressive",name:"هجومي",icon:"⚔️"},
+ {id:"tactical",name:"تكتيكي",icon:"🧠"},
+ {id:"defensive",name:"دفاعي",icon:"🛡️"},
+ {id:"balanced",name:"متوازن",icon:"⚖️"},
+ {id:"chaotic",name:"مفاجآت",icon:"🎭"}
+];
+const VIRTUAL_PLAYERS=Array.from({length:200},(_,i)=>{
+ const n=i+1,style=BOT_STYLES[i%BOT_STYLES.length];
+ const deckIds=Array.from({length:5},(_,j)=>cardPool[(i*7+j*11)%cardPool.length].id);
+ const level=1+((i*13+Math.floor(i/7)*3)%50);
+ return {id:"ai-"+String(n).padStart(3,"0"),number:n,name:BOT_FIRST_NAMES[Math.floor(i/10)]+" "+BOT_EPITHETS[i%10],level,rating:650+((i*97)%1850),style:style.id,styleName:style.name,styleIcon:style.icon,wins:Math.floor(level*1.7+(i%9)),deckIds};
+});
+let virtualBotPage=1;
+function renderPvp(){
+ document.getElementById('pvpContent').innerHTML=
+ '<div class="pvpBox"><h2>🤖 تحدي 200 لاعب افتراضي</h2><p>اختر خصمًا يتحكم به الذكاء الاصطناعي داخل اللعبة. لكل لاعب مستوى وتقييم وأسلوب لعب وتشكيلة مختلفة. هؤلاء خصوم افتراضيون وليسوا لاعبين حقيقيين.</p><div class="virtualBotSummary"><b>200</b><span>خصم جاهز للتحدي</span><b>5</b><span>أساليب لعب</span></div><div id="virtualBotList"></div></div>'+
+ '<div class="pvpBox realPvpBox"><h2>🌐 قتال ضد لاعب حقيقي</h2><p>يمكنك أيضًا البحث عن لاعب حقيقي عبر الحسابات.</p><div class="pvpStatus" id="pvpStatus">جاهز للبحث عن لاعب.</div><button class="pvpBtn" onclick="startPvpQueue()">🔎 البحث عن لاعب حقيقي</button><button class="pvpBtn secondary" onclick="openPanel(\'معلومات القتال ضد لاعب\',\'<div class=quest><b>كيف يعمل؟</b><span>يتم مطابقة اللاعبين المسجلين بحساباتهم عبر قائمة الانتظار المشتركة.</span></div>\')">ℹ️ التفاصيل</button></div>';
+ renderVirtualBots(1);
+}
+function renderVirtualBots(page){
+ virtualBotPage=Math.max(1,Math.min(20,Number(page)||1));
+ const list=document.getElementById("virtualBotList");if(!list)return;
+ const start=(virtualBotPage-1)*10,rows=VIRTUAL_PLAYERS.slice(start,start+10);
+ list.innerHTML='<div class="virtualBotRows">'+rows.map(bot=>
+ '<div class="virtualBotRow"><div class="virtualBotAvatar">'+bot.styleIcon+'</div><div class="virtualBotInfo"><b>'+bot.name+'</b><span>المستوى '+bot.level+' · تقييم '+bot.rating+' · '+bot.styleName+'</span></div><button class="challengeBotBtn" onclick="challengeVirtualBot(\''+bot.id+'\')">تحدَّ</button></div>'
+ ).join('')+'</div><div class="virtualBotPages"><button class="pvpBtn secondary" '+(virtualBotPage===1?'disabled':'')+' onclick="renderVirtualBots('+Math.max(1,virtualBotPage-1)+')">‹ السابق</button><span>صفحة '+virtualBotPage+' من 20</span><button class="pvpBtn secondary" '+(virtualBotPage===20?'disabled':'')+' onclick="renderVirtualBots('+Math.min(20,virtualBotPage+1)+')">التالي ›</button></div>';
+}
+function makeVirtualBattleDecks(bot){
+ const player=getBattleDeck(),hpBoost=1+Math.min(.2,(bot.level-1)*.004),atkBoost=Math.floor((bot.level-1)/15);
+ const enemy=bot.deckIds.map(id=>{
+  const base=cardPool.find(c=>c.id===id)||cardPool[0],unit=freshCard(base);
+  unit.max=Math.round(base.max*hpBoost);unit.hp=unit.max;unit.atk=base.atk+atkBoost;
+  return unit;
+ });
+ return {player,enemy};
+}
+function challengeVirtualBot(id){
+ const bot=VIRTUAL_PLAYERS.find(x=>x.id===id);if(!bot)return;
+ state={player:[],enemy:[],energy:3,round:1,combo:0,selected:null,target:null,over:false,turn:"player",usedIds:[],mode:"bot",bot};
+ matchPlayerWins=0;matchEnemyWins=0;battleNumber=0;matchOver=false;battleEnding=false;
+ showScreen("battleScreen");startMatch();
+ msg("بدأت مواجهة "+bot.name+" — المستوى "+bot.level+" · "+bot.styleName+".");
+}
+function chooseVirtualBotAction(foes,attackers,bot){
+ const style=bot?.style||"balanced";
+ const enemy=foes.slice().sort((a,b)=>{
+  const score=u=>style==="aggressive"?u.atk*2+u.hp*.08:style==="defensive"?u.hp*.35+u.atk:style==="tactical"?u.atk*1.4-u.hp*.08:style==="chaotic"?Math.random()*20+u.atk:u.atk+u.hp*.12;
+  return score(b)-score(a);
+ })[0];
+ const target=attackers.slice().sort((a,b)=>{
+  const score=u=>style==="aggressive"?u.hp*.8+u.atk*.25:style==="tactical"?u.hp*.65+u.atk*.7:style==="defensive"?u.hp*.4+u.atk*.3:style==="chaotic"?Math.random()*30+u.hp:u.hp*.55+u.atk*.45;
+  return score(a)-score(b);
+ })[0];
+ return {enemy,target};
+}
+window.makeVirtualBattleDecks=makeVirtualBattleDecks;
+window.chooseVirtualBotAction=chooseVirtualBotAction;
+window.renderVirtualBots=renderVirtualBots;
+window.challengeVirtualBot=challengeVirtualBot;
 async function startPvpQueue(){
  const el=document.getElementById('pvpStatus');if(!cloudUser){el.textContent='سجّل الدخول بحساب Google أولًا حتى يمكن مطابقتك مع لاعب حقيقي.';return}
  el.textContent='جاري البحث عن خصم...';
@@ -164,7 +225,7 @@ function launchPvp(id,side,row){
  showScreen('battleScreen');render();msg('تمت مطابقتك مع لاعب حقيقي. تبدأ المواجهة الآن.');
 }
 window.openDeckBuilder=openDeckBuilder;window.toggleDeckCard=toggleDeckCard;window.saveDeckBuilder=saveDeckBuilder;window.enterTower=enterTower;window.enterPvp=enterPvp;window.startTower=startTower;window.spendTowerPoint=spendTowerPoint;window.openStatsUpgrade=openStatsUpgrade;window.openOwnedCards=openOwnedCards;window.claimTowerCard=claimTowerCard;window.nextTowerFloor=nextTowerFloor;
-window.startPvpQueue=startPvpQueue;window.renderPvp=renderPvp;window.chooseTowerReward=chooseTowerReward;window.renderTower=renderTower;
+window.startPvpQueue=startPvpQueue;window.renderPvp=renderPvp;window.chooseTowerReward=chooseTowerReward;window.renderTower=renderTower;window.renderVirtualBots=renderVirtualBots;window.challengeVirtualBot=challengeVirtualBot;
 document.getElementById('openTower').onclick=enterTower;
 document.getElementById('openPvp').onclick=enterPvp;
 ensure();
