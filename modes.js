@@ -156,7 +156,7 @@ let virtualBotPage=1;
 function renderPvp(){
  document.getElementById('pvpContent').innerHTML=
  '<div class="pvpBox"><h2>🤖 تحدي 200 لاعب افتراضي</h2><p>اختر خصمًا يتحكم به الذكاء الاصطناعي داخل اللعبة. لكل لاعب مستوى وتقييم وأسلوب لعب وتشكيلة مختلفة. هؤلاء خصوم افتراضيون وليسوا لاعبين حقيقيين.</p><div class="virtualBotSummary"><b>200</b><span>خصم جاهز للتحدي</span><b>5</b><span>أساليب لعب</span></div><div id="virtualBotList"></div></div>'+
- '<div class="pvpBox realPvpBox"><h2>🌐 قتال ضد لاعب حقيقي</h2><p>يمكنك أيضًا البحث عن لاعب حقيقي عبر الحسابات.</p><div class="pvpStatus" id="pvpStatus">جاهز للبحث عن لاعب.</div><button class="pvpBtn" onclick="startPvpQueue()">🔎 البحث عن لاعب حقيقي</button><button class="pvpBtn secondary" onclick="openPanel(\\'معلومات القتال ضد لاعب\\',\\'<div class=quest><b>كيف يعمل؟</b><span>يتم مطابقة اللاعبين المسجلين بحساباتهم عبر قائمة الانتظار المشتركة.</span></div>\\')">ℹ️ التفاصيل</button></div>';
+ '<div class="pvpBox realPvpBox"><h2>🌐 قتال ضد لاعب حقيقي</h2><p>يمكنك أيضًا البحث عن لاعب حقيقي عبر الحسابات.</p><div class="pvpStatus" id="pvpStatus">جاهز للبحث عن لاعب.</div><button class="pvpBtn" onclick="startPvpQueue()">🔎 البحث عن لاعب حقيقي</button><button class="pvpBtn secondary" onclick="openPanel(\'معلومات القتال ضد لاعب\',\'<div class=quest><b>كيف يعمل؟</b><span>يتم مطابقة اللاعبين المسجلين بحساباتهم عبر قائمة الانتظار المشتركة.</span></div>\')">ℹ️ التفاصيل</button></div>';
  renderVirtualBots(1);
 }
 function renderVirtualBots(page){
@@ -164,7 +164,7 @@ function renderVirtualBots(page){
  const list=document.getElementById("virtualBotList");if(!list)return;
  const start=(virtualBotPage-1)*10,rows=VIRTUAL_PLAYERS.slice(start,start+10);
  list.innerHTML='<div class="virtualBotRows">'+rows.map(bot=>
- '<div class="virtualBotRow"><div class="virtualBotAvatar">'+bot.styleIcon+'</div><div class="virtualBotInfo"><b>'+bot.name+'</b><span>المستوى '+bot.level+' · تقييم '+bot.rating+' · '+bot.styleName+'</span></div><button class="challengeBotBtn" onclick="challengeVirtualBot(\\''+bot.id+'\\')">تحدَّ</button></div>'
+ '<div class="virtualBotRow"><div class="virtualBotAvatar">'+bot.styleIcon+'</div><div class="virtualBotInfo"><b>'+bot.name+'</b><span>المستوى '+bot.level+' · تقييم '+bot.rating+' · '+bot.styleName+'</span></div><button class="challengeBotBtn" onclick="challengeVirtualBot(\''+bot.id+'\')">تحدَّ</button></div>'
  ).join('')+'</div><div class="virtualBotPages"><button class="pvpBtn secondary" '+(virtualBotPage===1?'disabled':'')+' onclick="renderVirtualBots('+Math.max(1,virtualBotPage-1)+')">‹ السابق</button><span>صفحة '+virtualBotPage+' من 20</span><button class="pvpBtn secondary" '+(virtualBotPage===20?'disabled':'')+' onclick="renderVirtualBots('+Math.min(20,virtualBotPage+1)+')">التالي ›</button></div>';
 }
 function makeVirtualBattleDecks(bot){
