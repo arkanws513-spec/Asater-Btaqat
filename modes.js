@@ -203,10 +203,13 @@ async function startPvpQueue(){
  const el=document.getElementById('pvpStatus');if(!cloudUser){el.textContent='سجّل الدخول بحساب Google أولًا حتى يمكن مطابقتك مع لاعب حقيقي.';return}
  el.textContent='جاري البحث عن خصم...';
  const me=cloudUser.id;
- const {data:wait}=await supabaseClient.from('card_legends_pvp').select('*').eq('status','waiting').neq('host_id',me).limit(1).maybeSingle();
+ const {data:wait,error:lookupError}=await supabaseClient.from('card_legends_pvp').select('*').eq('status','waiting').neq('host_id',me).limit(1).maybeSingle();
+ if(lookupError){el.textContent='تعذر البحث عن خصم. تحقق من اتصالك ثم حاول مرة أخرى.';console.error(lookupError);return}
  if(wait){
-   const {error}=await supabaseClient.from('card_legends_pvp').update({guest_id:me,guest_deck:getBattleDeck().map(x=>x.id),status:'matched',updated_at:new Date().toISOString()}).eq('id',wait.id).eq('status','waiting');
-   if(!error){el.textContent='تم العثور على خصم! جهّز تشكيلتك.';launchPvp(wait.id,'guest',wait);}
+   const {data:matched,error}=await supabaseClient.from('card_legends_pvp').update({guest_id:me,guest_deck:getBattleDeck().map(x=>x.id),status:'matched',updated_at:new Date().toISOString()}).eq('id',wait.id).eq('status','waiting').select('id').maybeSingle();
+   if(error){el.textContent='تعذر الانضمام إلى المواجهة. حاول البحث مرة أخرى.';console.error(error);return}
+   if(matched){el.textContent='تم العثور على خصم! جهّز تشكيلتك.';launchPvp(wait.id,'guest',wait);}
+   else el.textContent='سبق لاعب آخر إلى هذا الخصم. اضغط البحث مرة أخرى.';
    return;
  }
  const {data,error}=await supabaseClient.from('card_legends_pvp').insert({host_id:me,status:'waiting',host_deck:getBattleDeck().map(x=>x.id)}).select().single();
