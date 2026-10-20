@@ -330,18 +330,19 @@ function updateMatchHud(){
 }
 function newState(){
   battleNumber++;battleEnding=false;
-  const deck=shuffle(cardPool);
-  discover(deck.slice(0,10).map(x=>x.id));
-  state={
-    player:deck.slice(0,5).map(freshCard),
-    enemy:deck.slice(5,10).map(freshCard),
-    energy:3,round:1,combo:0,selected:null,target:null,over:false,turn:"player",
-    usedIds:deck.slice(0,10).map(x=>x.id)
-  };
+  const virtualBot=state&&state.mode==="bot"?state.bot:null;
+  if(virtualBot&&window.makeVirtualBattleDecks){
+    const decks=window.makeVirtualBattleDecks(virtualBot);
+    state={player:decks.player,enemy:decks.enemy,energy:3,round:1,combo:0,selected:null,target:null,over:false,turn:"player",usedIds:[...decks.player,...decks.enemy].map(x=>x.id),mode:"bot",bot:virtualBot};
+    discover(state.usedIds);
+  }else{
+    const deck=shuffle(cardPool);
+    discover(deck.slice(0,10).map(x=>x.id));
+    state={player:deck.slice(0,5).map(freshCard),enemy:deck.slice(5,10).map(freshCard),energy:3,round:1,combo:0,selected:null,target:null,over:false,turn:"player",usedIds:deck.slice(0,10).map(x=>x.id)};
+  }
   state.player.forEach(u=>u.used=false);
-  updateMatchHud();
-  render();
-  msg("تم توزيع 10 بطاقات عشوائيًا من أصل 30: 5 لك و5 للخصم.");
+  updateMatchHud();render();
+  msg(state.mode==="bot"?"تحدي "+state.bot.name+" — اختر أفضل تحركاتك.":"تم توزيع 10 بطاقات عشوائيًا من أصل 30: 5 لك و5 للخصم.");
 }
 function alive(arr){return arr.filter(x=>x.hp>0);}
 function msg(t){document.getElementById("message").textContent=t;}
@@ -394,8 +395,14 @@ function endTurn(){
   const foes=alive(state.enemy), attackers=alive(state.player);
   if(!foes.length||!attackers.length){checkWin();return;}
   state.turn="enemy";state.selected=null;state.target=null;render();
-  const enemy=foes[Math.floor(Math.random()*foes.length)];
-  const target=attackers[Math.floor(Math.random()*attackers.length)];
+  let enemy,target;
+  if(state.mode==="bot"&&window.chooseVirtualBotAction){
+    const action=window.chooseVirtualBotAction(foes,attackers,state.bot);
+    enemy=action.enemy;target=action.target;
+  }else{
+    enemy=foes[Math.floor(Math.random()*foes.length)];
+    target=attackers[Math.floor(Math.random()*attackers.length)];
+  }
   const ei=state.enemy.indexOf(enemy), pi=state.player.indexOf(target);
   if(ei<0||pi<0){state.turn="player";render();return;}
   msg(enemy.name+" اختار "+target.name+" — تبدأ المواجهة!");
