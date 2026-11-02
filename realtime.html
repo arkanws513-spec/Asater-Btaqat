@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#090e1d">
+<title>أساطير البطاقات — المعركة اللحظية</title>
+<link rel="stylesheet" href="realtime.css">
+</head>
+<body>
+<main class="game">
+<header class="topbar"><span class="back">⚔️ ساحة القتال</span><div><b>أساطير البطاقات</b><small>معركة لحظية ضد الذكاء الاصطناعي</small></div><div class="timer" id="timer">00:00</div></header>
+<section class="hud">
+<div class="base"><span>قاعدتك</span><b id="homeHp">100%</b><i><em id="homeBar"></em></i></div>
+<div class="energy"><span>الطاقة</span><b id="energyText">5 / 10</b><i><em id="energyBar"></em></i></div>
+<div class="base enemyBase"><span>قاعدة الخصم</span><b id="enemyHp">100%</b><i><em id="enemyBar"></em></i></div>
+</section>
+<canvas id="arena" aria-label="ساحة المعركة"></canvas>
+<div class="hint" id="hint">حرّك بطلك بالعصا، واستدعِ الوحدات بالبطاقات.</div>
+<section class="bottom">
+<div class="joystick" id="stick"><div class="stickRing"></div><div class="stickKnob" id="knob"></div><small>تحريك البطل</small></div>
+<div class="cards" id="cards"></div>
+</section>
+<div class="actions"><button id="skillBtn" class="skill">✦ مهارة البطل</button><button id="pauseBtn">Ⅱ إيقاف</button></div>
+<div class="result" id="result"><div class="resultBox"><div id="resultIcon">🏆</div><h1 id="resultTitle">انتهت المعركة</h1><p id="resultText"></p><button onclick="location.reload()">معركة جديدة</button><a href="index.html">العودة للرئيسية</a></div></div>
+</main>
+<script src="realtime.js"></script>
+</body></html>
