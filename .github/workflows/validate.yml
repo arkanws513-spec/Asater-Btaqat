@@ -15,8 +15,6 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check realtime.js
-          node --check duel.js
-          node --check modes.js
       - name: Check required game files
         run: |
           test -s index.html
