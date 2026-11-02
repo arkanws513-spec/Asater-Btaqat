@@ -1,0 +1,52 @@
+(()=>{'use strict';
+const canvas=document.getElementById('arena'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const cards=[
+{id:'guard',name:'حارس',icon:'🛡️',cost:3,hp:95,damage:8,speed:34,range:24,rate:1.05,color:'#6dc6ff',kind:'melee'},
+{id:'archer',name:'رامٍ',icon:'🏹',cost:3,hp:48,damage:13,speed:28,range:145,rate:1.25,color:'#79e2b4',kind:'ranged'},
+{id:'brute',name:'عملاق',icon:'🪨',cost:5,hp:190,damage:22,speed:17,range:27,rate:1.5,color:'#d5a7ff',kind:'melee'},
+{id:'scout',name:'كشاف',icon:'⚡',cost:2,hp:38,damage:7,speed:66,range:22,rate:.55,color:'#ffd16d',kind:'melee'}
+];
+let W=0,H=0,dpr=1,last=0,elapsed=0,energy=5,paused=false,ended=false,skillCooldown=0;
+const world={units:[],effects:[],home:100,enemy:100,spawn:0,botSpawn:2.5};
+const hero={x:0,y:0,r:15,hp:180,max:180,speed:175,attack:18,range:105,cool:0,dir:1};
+const stick={active:false,id:null,x:0,y:0,dx:0,dy:0};
+const lanes=[.28,.5,.72];
+function resize(){const r=canvas.getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);W=r.width;H=r.height;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(!hero.x){hero.x=W*.5;hero.y=H*.82}}
+window.addEventListener('resize',resize);resize();
+function addUnit(team,kind,x,y){const c=cards.find(v=>v.id===kind)||cards[0];world.units.push({team,kind,x,y,hp:c.hp,max:c.hp,damage:c.damage,speed:c.speed,range:c.range,rate:c.rate,cool:Math.random()*.3,r:kind==='brute'?15:kind==='guard'?12:9,color:c.color,dir:team==='blue'?-1:1})}
+function nearest(u){let best=null,dist=Infinity;for(const v of world.units){if(v.team===u.team||v.hp<=0)continue;const d=Math.hypot(v.x-u.x,v.y-u.y);if(d<dist){best=v;dist=d}}return best}
+function heroTarget(){let best=null,dist=hero.range;for(const u of world.units){if(u.team==='red'&&u.hp>0){const d=Math.hypot(u.x-hero.x,u.y-hero.y);if(d<dist){best=u;dist=d}}}return best}
+function summon(id){if(ended||paused)return;const c=cards.find(v=>v.id===id);if(!c||energy<c.cost)return;energy-=c.cost;addUnit('blue',id,hero.x+(Math.random()-.5)*30,hero.y-22);renderCards();hud();$('hint').textContent='تم استدعاء '+c.name+'!'}
+function damage(target,amount,team){if(!target||target.hp<=0)return;target.hp=Math.max(0,target.hp-amount);world.effects.push({x:target.x,y:target.y-12,text:'-'+Math.round(amount),life:.55,max:.55,team})}
+function update(dt){if(paused||ended)return;elapsed+=dt;energy=Math.min(10,energy+dt*.48);skillCooldown=Math.max(0,skillCooldown-dt);hero.cool=Math.max(0,hero.cool-dt);
+hero.x=Math.max(18,Math.min(W-18,hero.x+stick.dx*hero.speed*dt));hero.y=Math.max(H*.42,Math.min(H-20,hero.y+stick.dy*hero.speed*dt));
+if(Math.hypot(stick.dx,stick.dy)>.1)hero.dir=stick.dx>=0?1:-1;
+const target=heroTarget();if(target&&hero.cool<=0){damage(target,hero.attack,'blue');hero.cool=.72}
+world.spawn+=dt;if(world.spawn>2.2&&world.units.filter(u=>u.team==='blue'&&u.hp>0).length<9){world.spawn=0}
+world.botSpawn-=dt;if(world.botSpawn<=0&&world.units.filter(u=>u.team==='red'&&u.hp>0).length<10){const kind=['guard','archer','brute','scout'][Math.floor(Math.random()*4)];addUnit('red',kind,W*.5+(Math.random()-.5)*W*.28,H*.2);world.botSpawn=2.8+Math.random()*2.2}
+for(const u of world.units){if(u.hp<=0)continue;u.cool=Math.max(0,u.cool-dt);const t=nearest(u);if(t){const d=Math.hypot(t.x-u.x,t.y-u.y);if(d>u.range){const a=Math.atan2(t.y-u.y,t.x-u.x);u.x+=Math.cos(a)*u.speed*dt;u.y+=Math.sin(a)*u.speed*dt}else if(u.cool<=0){damage(t,u.damage,u.team);u.cool=u.rate}}else{const targetY=u.team==='blue'?H*.17:H*.83;const d=Math.hypot(W*.5-u.x,targetY-u.y);if(d>25){const a=Math.atan2(targetY-u.y,W*.5-u.x);u.x+=Math.cos(a)*u.speed*dt;u.y+=Math.sin(a)*u.speed*dt}else if(u.cool<=0){if(u.team==='blue')world.enemy=Math.max(0,world.enemy-u.damage);else world.home=Math.max(0,world.home-u.damage);u.cool=u.rate}}}
+world.units=world.units.filter(u=>u.hp>0);for(const e of world.effects)e.life-=dt;world.effects=world.effects.filter(e=>e.life>0);
+if(world.home<=0||world.enemy<=0){ended=true;const win=world.enemy<=0;$('resultIcon').textContent=win?'🏆':'🛡️';$('resultTitle').textContent=win?'انتصار!':'تم تدمير قاعدتك';$('resultText').textContent=win?'نجحت في هزيمة جيش الخصم وتدمير قاعدته.':'حاول مجددًا، ووازن بين حركة البطل واستدعاء الوحدات.';$('result').classList.add('show')}
+hud()}
+function draw(){ctx.clearRect(0,0,W,H);const mid=H*.5;ctx.fillStyle='#152b36';ctx.fillRect(0,0,W,mid);ctx.fillStyle='#30263a';ctx.fillRect(0,mid,W,H-mid);ctx.strokeStyle='#ffffff16';ctx.setLineDash([7,9]);ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(W,mid);ctx.stroke();ctx.setLineDash([]);
+for(const x of lanes){ctx.fillStyle='#ffffff08';ctx.fillRect(W*x-1,0,2,H)}
+drawBase(W*.5,H*.12,world.enemy,'#fa6876','قاعدة الخصم');drawBase(W*.5,H*.9,world.home,'#61d69b','قاعدتك');
+for(const u of world.units)drawUnit(u);
+drawHero();for(const e of world.effects){ctx.globalAlpha=Math.max(0,e.life/e.max);ctx.fillStyle=e.team==='blue'?'#9ce6ff':'#ffabb0';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(e.text,e.x,e.y-(1-e.life/e.max)*20);ctx.globalAlpha=1}
+}
+function drawBase(x,y,hp,color,label){ctx.fillStyle='#080d19aa';ctx.beginPath();ctx.roundRect(x-38,y-17,76,34,9);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=color;ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText(label,x,y+4);ctx.fillStyle='#050912';ctx.fillRect(x-34,y+21,68,5);ctx.fillStyle=color;ctx.fillRect(x-34,y+21,68*hp/100,5)}
+function drawUnit(u){ctx.fillStyle=u.team==='blue'?'#193f59':'#5a293c';ctx.strokeStyle=u.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(u.x,u.y,u.r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(u.kind==='archer'?'➶':u.kind==='brute'?'◆':u.kind==='scout'?'ϟ':'✚',u.x,u.y+4);ctx.fillStyle='#050912';ctx.fillRect(u.x-14,u.y-u.r-8,28,4);ctx.fillStyle=u.team==='blue'?'#60dca9':'#ff6878';ctx.fillRect(u.x-14,u.y-u.r-8,28*u.hp/u.max,4)}
+function drawHero(){ctx.fillStyle='#ffd777';ctx.beginPath();ctx.arc(hero.x,hero.y,hero.r+4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#202c49';ctx.beginPath();ctx.arc(hero.x,hero.y,hero.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff0bd';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText('♛',hero.x,hero.y+5);ctx.fillStyle='#070b13';ctx.fillRect(hero.x-18,hero.y-27,36,4);ctx.fillStyle='#64e0aa';ctx.fillRect(hero.x-18,hero.y-27,36*hero.hp/hero.max,4)}
+function frame(t){const dt=Math.min(.04,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(frame)}
+function hud(){$('energyText').textContent=energy.toFixed(1)+' / 10';$('energyBar').style.width=(energy*10)+'%';$('homeHp').textContent=Math.ceil(world.home)+'%';$('homeBar').style.width=world.home+'%';$('enemyHp').textContent=Math.ceil(world.enemy)+'%';$('enemyBar').style.width=world.enemy+'%';$('timer').textContent=String(Math.floor(elapsed/60)).padStart(2,'0')+':'+String(Math.floor(elapsed%60)).padStart(2,'0')}
+function renderCards(){$('cards').innerHTML=cards.map(c=>'<button class="card" data-card="'+c.id+'"><span class="ico">'+c.icon+'</span><b>'+c.name+'</b><small>قوة '+c.damage+' · صحة '+c.hp+'</small><span class="cost">⚡ '+c.cost+'</span></button>').join('');$('cards').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>summon(b.dataset.card)))}
+function skill(){if(paused||ended||skillCooldown>0)return;skillCooldown=8;for(const u of world.units){if(u.team==='red'&&Math.hypot(u.x-hero.x,u.y-hero.y)<145)damage(u,38,'blue')}hero.hp=Math.min(hero.max,hero.hp+35);$('hint').textContent='انفجار البطل! ضرر جماعي واستعادة صحة.'}
+$('skillBtn').addEventListener('click',skill);$('pauseBtn').addEventListener('click',()=>{paused=!paused;$('pauseBtn').textContent=paused?'▶ متابعة':'Ⅱ إيقاف';$('hint').textContent=paused?'المعركة متوقفة.':'استمرت المعركة.'});
+const stickEl=$('stick'),knob=$('knob');
+function stickStart(e){e.preventDefault();stick.active=true;stick.id=e.pointerId;stickEl.setPointerCapture(e.pointerId);stickMove(e)}
+function stickMove(e){if(!stick.active||e.pointerId!==stick.id)return;const r=stickEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height*.43;let dx=e.clientX-cx,dy=e.clientY-cy;const max=31,d=Math.hypot(dx,dy);if(d>max){dx=dx/d*max;dy=dy/d*max}stick.dx=dx/max;stick.dy=dy/max;knob.style.left=(50+dx/r.width*100)+'%';knob.style.top=(43+dy/r.height*100)+'%'}
+function stickEnd(e){if(!stick.active||e.pointerId!==stick.id)return;stick.active=false;stick.id=null;stick.dx=stick.dy=0;knob.style.left='50%';knob.style.top='43%'}
+stickEl.addEventListener('pointerdown',stickStart);stickEl.addEventListener('pointermove',stickMove);stickEl.addEventListener('pointerup',stickEnd);stickEl.addEventListener('pointercancel',stickEnd);stickEl.addEventListener('lostpointercapture',stickEnd);
+renderCards();hud();requestAnimationFrame(frame);
+})();
